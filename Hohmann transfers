@@ -1,137 +1,128 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 # Define constants
 MU = 398600  # Gravitational parameter for Earth (km^3/s^2)
 
 # Function to calculate the ideal Hohmann transfer
 def hohmann_transfer(r1, r2):
-    # Semi-major axis of transfer orbit
     a_transfer = (r1 + r2) / 2
-    
-    # Velocity in circular orbit r1 and r2
+    v_transfer_periapsis = np.sqrt(MU * (2 / r1 - 1 / a_transfer))
+    v_transfer_apoapsis = np.sqrt(MU * (2 / r2 - 1 / a_transfer))
     v1 = np.sqrt(MU / r1)
     v2 = np.sqrt(MU / r2)
-    
-    # Velocity at periapsis (burn 1) and apoapsis (burn 2) of transfer orbit
-    v_transfer_periapsis = np.sqrt(MU * (2/r1 - 1/a_transfer))
-    v_transfer_apoapsis = np.sqrt(MU * (2/r2 - 1/a_transfer))
-    
-    # Delta-v for both burns
     delta_v1 = v_transfer_periapsis - v1
     delta_v2 = v2 - v_transfer_apoapsis
-    
     return delta_v1, delta_v2, a_transfer
 
-# Function to generate a random orbit radius (in km)
-def random_orbit():
-    return np.random.uniform(7000, 42000)  # Random orbit between 7000 km and 42000 km (LEO to MEO)
-
 # Function to calculate the user's transfer orbit based on their delta-v
-def user_transfer_orbit(r1, delta_v1):
-    # Initial velocity at periapsis (user burn 1)
+def user_transfer_orbit(r1, r2, user_delta_v1):
     v1 = np.sqrt(MU / r1)
-    v_user_periapsis = v1 + delta_v1
-    
-    # Calculate the semi-major axis of the user's orbit using vis-viva equation
+    v_user_periapsis = v1 + user_delta_v1
     a_user = MU / (2 * (v_user_periapsis**2 / 2 - MU / r1))
-    
-    # Calculate the eccentricity of the user's transfer orbit
-    e_user = 1 - r1 / a_user
-    
-    return a_user, e_user
+
+    v_user_apoapsis = np.sqrt(2 * (MU / r1 + v_user_periapsis**2 / 2 - MU / a_user))
+    delta_v2 = np.sqrt(MU / r2) - v_user_apoapsis
+
+    return user_delta_v1, delta_v2, a_user
 
 # Function to plot orbits, burns, and transfer paths
 def plot_orbits(r1, r2, user_dv1, user_dv2):
-    # Create a plot
     fig, ax = plt.subplots(figsize=(8, 8))
-    
+
     # Plot Earth
     earth = plt.Circle((0, 0), 6371, color='blue', label="Earth", alpha=0.5)
     ax.add_patch(earth)
-    
-    # Plot initial and final orbits
+
     orbit1 = plt.Circle((0, 0), r1, color='green', fill=False, linestyle='--', label=f"Initial Orbit (r1={r1:.1f} km)")
     orbit2 = plt.Circle((0, 0), r2, color='orange', fill=False, linestyle='--', label=f"Final Orbit (r2={r2:.1f} km)")
-    
+
     ax.add_patch(orbit1)
     ax.add_patch(orbit2)
-    
-    # Calculate ideal Hohmann transfer
+
     ideal_dv1, ideal_dv2, a_transfer = hohmann_transfer(r1, r2)
-    
-    # Calculate eccentricity of the ideal transfer orbit
     e_transfer = (r2 - r1) / (r2 + r1)
-    
-    # Calculate points for the ideal elliptical transfer orbit using polar coordinates
     theta = np.linspace(0, 2 * np.pi, 500)
     r_transfer = (a_transfer * (1 - e_transfer**2)) / (1 + e_transfer * np.cos(theta))
-    
-    # Convert polar coordinates to Cartesian for plotting the ideal transfer orbit
+
     x_transfer = r_transfer * np.cos(theta)
     y_transfer = r_transfer * np.sin(theta)
+
+    ax.plot(x_transfer, y_transfer, color='red', label="Ideal Final Orbit")
+
+    user_dv1, user_dv2, a_user_transfer = user_transfer_orbit(r1, r2, user_dv1)
     
-    # Plot ideal transfer orbit
-    ax.plot(x_transfer, y_transfer, color='red', label="Ideal Transfer Orbit")
-    
-    # Calculate the user's transfer orbit
-    a_user, e_user = user_transfer_orbit(r1, user_dv1)
-    
-    # Calculate points for the user's elliptical transfer orbit using polar coordinates
-    r_user_transfer = (a_user * (1 - e_user**2)) / (1 + e_user * np.cos(theta))
-    
-    # Convert polar coordinates to Cartesian for plotting the user's transfer orbit
-    x_user_transfer = r_user_transfer * np.cos(theta)
-    y_user_transfer = r_user_transfer * np.sin(theta)
-    
-    # Plot user's transfer orbit
-    ax.plot(x_user_transfer, y_user_transfer, color='purple', label="User Transfer Orbit", linestyle='-.')
-    
-    # Mark burn points with orange squares
-    ax.plot(r1, 0, 's', color='orange', markersize=10, label="Burn 1 (Δv1)", zorder=5)
-    ax.plot(-r2, 0, 's', color='orange', markersize=10, label="Burn 2 (Δv2)", zorder=5)
-    
-    # Display user input burns
-    ax.annotate(f"User Burn 1: Δv1 = {user_dv1:.2f} km/s", (r1 * 0.5, 0), color='purple', fontsize=12, ha='center')
-    ax.annotate(f"User Burn 2: Δv2 = {user_dv2:.2f} km/s", (-r2 * 0.5, 0), color='purple', fontsize=12, ha='center')
-    
-    # Display ideal burns
+    if a_user_transfer is not None:
+        e_user_transfer = (r2 - r1) / (r2 + r1)
+        theta_user = np.linspace(0, 2 * np.pi, 500)
+        r_user_transfer = (a_user_transfer * (1 - e_user_transfer**2)) / (1 + e_user_transfer * np.cos(theta_user))
+
+        x_user_transfer = r_user_transfer * np.cos(theta_user)
+        y_user_transfer = r_user_transfer * np.sin(theta_user)
+
+        # Calculate the offset to align user orbit with ideal orbit
+        # Rotate user orbit by 180 degrees
+        x_user_transfer = -x_user_transfer
+        y_user_transfer = -y_user_transfer
+
+        # Find where Burn 1 of the user orbit is and adjust so it aligns with Burn 2 of the ideal orbit
+        ideal_burn1_x = x_transfer[0]
+        ideal_burn1_y = y_transfer[0]
+        user_burn1_x = x_user_transfer[0]
+        user_burn1_y = y_user_transfer[0]
+
+        # Calculate the offset needed to align Burn 1 of the user with Burn 2 of the ideal
+        offset_x = ideal_burn1_x - user_burn1_x
+        offset_y = ideal_burn1_y - user_burn1_y
+
+        x_user_transfer += offset_x
+        y_user_transfer += offset_y
+
+        ax.plot(x_user_transfer, y_user_transfer, color='purple', label="User Final Orbit", linestyle='-.')
+
+        ax.plot(r1, 0, 's', color='orange', markersize=10, label="Burn 1 (Δv1)", zorder=5)
+        ax.plot(-r2, 0, 's', color='orange', markersize=10, label="Burn 2 (Δv2)", zorder=5)
+
+        ax.annotate(f"User Burn 1: Δv1 = {user_dv1:.2f} km/s", (r1 * 0.5, 0), color='purple', fontsize=12, ha='center')
+        ax.annotate(f"User Burn 2: Δv2 = {user_dv2:.2f} km/s", (-r2 * 0.5, 0), color='purple', fontsize=12, ha='center')
+    else:
+        print("User's transfer orbit is invalid. Please check the inputs.")
+
     ax.annotate(f"Ideal Burn 1: Δv1 = {ideal_dv1:.2f} km/s", (r1 * 0.7, 0.3 * r1), color='red', fontsize=12, ha='center')
     ax.annotate(f"Ideal Burn 2: Δv2 = {ideal_dv2:.2f} km/s", (-r2 * 0.7, 0.3 * r2), color='red', fontsize=12, ha='center')
-    
-    # Set plot limits and labels
-    ax.set_xlim(-r2 * 1.2, r2 * 1.2)
-    ax.set_ylim(-r2 * 1.2, r2 * 1.2)
+
+    # Plot the user's apogee circle
+    user_apogee_radius = a_user_transfer * (1 + e_user_transfer)  # Apogee is at the farthest point
+    apogee_circle = plt.Circle((0, 0), user_apogee_radius, color='cyan', fill=False, linestyle='-.', label=f"User Apogee Circle (radius={user_apogee_radius:.1f} km)")
+    ax.add_patch(apogee_circle)
+
+    ax.set_xlim(-r2 * 1.5, r2 * 1.5)
+    ax.set_ylim(-r2 * 1.5, r2 * 1.5)
     ax.set_aspect('equal', 'box')
     ax.set_title("Hohmann Transfer Visualization")
     ax.set_xlabel("km")
     ax.set_ylabel("km")
-    
-    # Add legend
+
     ax.legend()
-    
     plt.grid(True)
     plt.show()
 
-# Main function
+
 def hohmann_transfer_practice():
-    # Generate random starting and ending orbits
-    r1 = random_orbit()
-    r2 = random_orbit()
-    
-    # Ensure r1 < r2
-    if r1 > r2:
-        r1, r2 = r2, r1
-    
+    r1 = random.randint(10000, 30000)  # Random value for r1 between 15000 and 30000 km
+    r2 = random.randint(10000, 30000)  # Random value for r1 between 15000 and 30000 km
+
     print(f"Starting Orbit (r1): {r1:.2f} km")
     print(f"Target Orbit (r2): {r2:.2f} km")
-    
-    # Ask user for burn details
+
+    ideal_dv1, ideal_dv2, _ = hohmann_transfer(r1, r2)
+  
+
     user_dv1 = float(input("Enter your Δv for the first burn (km/s): "))
     user_dv2 = float(input("Enter your Δv for the second burn (km/s): "))
-    
-    # Visualize orbits and burns
+    print(f"Ideal Δv for the first burn: {ideal_dv1:.2f} km/s")
+    print(f"Ideal Δv for the second burn: {ideal_dv2:.2f} km/s")
     plot_orbits(r1, r2, user_dv1, user_dv2)
 
-# Run the app
 hohmann_transfer_practice()
