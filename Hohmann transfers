@@ -36,7 +36,7 @@ def plot_orbits(r1, r2, user_dv1, user_dv2):
     ax.add_patch(earth)
 
     orbit1 = plt.Circle((0, 0), r1, color='green', fill=False, linestyle='--', label=f"Initial Orbit (r1={r1:.1f} km)")
-    orbit2 = plt.Circle((0, 0), r2, color='orange', fill=False, linestyle='--', label=f"Final Orbit (r2={r2:.1f} km)")
+    orbit2 = plt.Circle((0, 0), r2, color='orange', fill=False, linestyle='--', label=f"Final/Ideal Orbit (r2={r2:.1f} km)")
 
     ax.add_patch(orbit1)
     ax.add_patch(orbit2)
@@ -49,7 +49,7 @@ def plot_orbits(r1, r2, user_dv1, user_dv2):
     x_transfer = r_transfer * np.cos(theta)
     y_transfer = r_transfer * np.sin(theta)
 
-    ax.plot(x_transfer, y_transfer, color='red', label="Ideal Final Orbit")
+    ax.plot(x_transfer, y_transfer, color='red', label="Ideal transfer Orbit")
 
     user_dv1, user_dv2, a_user_transfer = user_transfer_orbit(r1, r2, user_dv1)
     
@@ -79,7 +79,7 @@ def plot_orbits(r1, r2, user_dv1, user_dv2):
         x_user_transfer += offset_x
         y_user_transfer += offset_y
 
-        ax.plot(x_user_transfer, y_user_transfer, color='purple', label="User Final Orbit", linestyle='-.')
+        ax.plot(x_user_transfer, y_user_transfer, color='purple', label="User Transfer Orbit", linestyle='-.')
 
         ax.plot(r1, 0, 's', color='orange', markersize=10, label="Burn 1 (Δv1)", zorder=5)
         ax.plot(-r2, 0, 's', color='orange', markersize=10, label="Burn 2 (Δv2)", zorder=5)
@@ -94,7 +94,7 @@ def plot_orbits(r1, r2, user_dv1, user_dv2):
 
     # Plot the user's apogee circle
     user_apogee_radius = a_user_transfer * (1 + e_user_transfer)  # Apogee is at the farthest point
-    apogee_circle = plt.Circle((0, 0), user_apogee_radius, color='cyan', fill=False, linestyle='-.', label=f"User Apogee Circle (radius={user_apogee_radius:.1f} km)")
+    apogee_circle = plt.Circle((0, 0), user_apogee_radius, color='cyan', fill=False, linestyle='-.', label=f"User Final Circle (radius={user_apogee_radius:.1f} km)")
     ax.add_patch(apogee_circle)
 
     ax.set_xlim(-r2 * 1.5, r2 * 1.5)
